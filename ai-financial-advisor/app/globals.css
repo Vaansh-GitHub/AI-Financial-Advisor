@@ -1,26 +1,221 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --navy-950: #070e18;
+    --navy-900: #0b192c;
+    --navy-800: #152945;
+    --navy-700: #1e3a5f;
+    --navy-600: #294d7a;
+    --teal-500: #0d9488;
+    --teal-400: #14b8a6;
+    --teal-300: #2dd4bf;
+    --slate-50: #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1e293b;
+    --slate-900: #0f172a;
+    --danger-500: #ef4444;
+    --warning-500: #f59e0b;
+    --success-500: #10b981;
+  }
+
+  body {
+    background-color: #f8fafc;
+    color: #0f172a;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Custom Financial UI Utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.05);
+}
+
+.navy-card {
+  background: linear-gradient(145deg, #0b192c 0%, #152945 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px -2px rgba(11, 25, 44, 0.25);
+}
+
+/* ============================================================
+   DARK MODE CO-PILOT FINTECH THEME (Deep Slate Navy)
+   ============================================================ */
+html.dark, .dark {
+  color-scheme: dark;
+}
+
+html.dark body,
+.dark body {
+  background-color: #070e18 !important;
+  color: #f1f5f9 !important;
+}
+
+html.dark .min-h-screen.flex,
+.dark .min-h-screen.flex {
+  background-color: #070e18 !important;
+}
+
+html.dark header,
+.dark header {
+  background-color: #0b192c !important;
+  border-color: #1e293b !important;
+}
+
+/* Surfaces and Cards */
+html.dark .bg-white,
+.dark .bg-white {
+  background-color: #0d1829 !important;
+  color: #f1f5f9 !important;
+}
+
+html.dark .bg-slate-50,
+html.dark .bg-slate-50\/50,
+html.dark .bg-slate-50\/60,
+html.dark .bg-slate-50\/80,
+.dark .bg-slate-50,
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/60,
+.dark .bg-slate-50\/80 {
+  background-color: #111e33 !important;
+}
+
+html.dark .bg-slate-100,
+.dark .bg-slate-100 {
+  background-color: #17263d !important;
+  color: #cbd5e1 !important;
+}
+
+html.dark .bg-slate-200,
+.dark .bg-slate-200 {
+  background-color: #1e3352 !important;
+}
+
+/* Borders and Dividers */
+html.dark .border-slate-100,
+html.dark .border-slate-200,
+html.dark .border-slate-200\/60,
+html.dark .border-slate-200\/70,
+html.dark .border-slate-200\/80,
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-200\/60,
+.dark .border-slate-200\/70,
+.dark .border-slate-200\/80 {
+  border-color: #1e2f47 !important;
+}
+
+html.dark .divide-slate-100 > * + *,
+html.dark .divide-slate-200 > * + *,
+.dark .divide-slate-100 > * + *,
+.dark .divide-slate-200 > * + * {
+  border-color: #1e2f47 !important;
+}
+
+/* Text Colors */
+html.dark .text-slate-900,
+.dark .text-slate-900 {
+  color: #f8fafc !important;
+}
+
+html.dark .text-slate-800,
+.dark .text-slate-800 {
+  color: #e2e8f0 !important;
+}
+
+html.dark .text-slate-700,
+.dark .text-slate-700 {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-slate-600,
+.dark .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+html.dark .text-slate-500,
+.dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+/* Form Controls */
+html.dark input,
+html.dark select,
+html.dark textarea,
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #111e33 !important;
+  color: #f8fafc !important;
+  border-color: #1e2f47 !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder,
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+html.dark select option,
+.dark select option {
+  background-color: #0d1829 !important;
+  color: #f8fafc !important;
+}
+
+/* Interactive Hovers */
+html.dark .hover\:bg-slate-50:hover,
+html.dark .hover\:bg-slate-50\/80:hover,
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-50\/80:hover {
+  background-color: #17263d !important;
+}
+
+html.dark .hover\:bg-slate-100:hover,
+.dark .hover\:bg-slate-100:hover {
+  background-color: #1e3352 !important;
+}
+
+/* Glass Panels */
+html.dark .glass-panel,
+.dark .glass-panel {
+  background: rgba(13, 24, 41, 0.95) !important;
+  border-color: #1e2f47 !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+html.dark ::-webkit-scrollbar-track,
+.dark ::-webkit-scrollbar-track {
+  background: #0d1829;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+html.dark ::-webkit-scrollbar-thumb,
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e3352;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+html.dark ::-webkit-scrollbar-thumb:hover,
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #2a4773;
 }
