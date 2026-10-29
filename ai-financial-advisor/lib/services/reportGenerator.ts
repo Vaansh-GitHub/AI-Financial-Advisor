@@ -1,5 +1,6 @@
 import { Client, Goal, FinancialReport, ReportType, FeasibilityStatus } from "../storage/types";
 import { saveReport, getAdviserSettings } from "../storage/localStorage";
+import { calculateGoalPlan } from "../finance/calculations";
 import { formatINR } from "../utils";
 
 export interface GenerateReportParams {
@@ -30,12 +31,19 @@ export function generateStructuredReport({
   let totalRequiredMonthlySIP = 0;
 
   const goalRoadmap = goals.map((g) => {
-    const calc = g.calculationResults;
-    const inflationAdjustedCost =
-      calc?.inflationAdjustedCost ||
-      Math.round(g.currentCost * Math.pow(1 + (g.expectedInflationRate || 0.06), g.targetHorizonYears));
-    const requiredMonthlySIP = calc?.requiredMonthlySIP || Math.round((inflationAdjustedCost * 0.007) / Math.max(1, g.targetHorizonYears));
-    const status: FeasibilityStatus = calc?.feasibilityStatus || (g.currentMonthlyContribution >= requiredMonthlySIP ? "ON_TRACK" : "STRETCH_REQUIRED");
+    const calc = g.calculationResults || calculateGoalPlan({
+      currentCost: g.currentCost,
+      targetHorizonYears: g.targetHorizonYears,
+      expectedInflationRate: g.expectedInflationRate || 0.06,
+      expectedAnnualReturn: g.expectedAnnualReturn || 0.12,
+      existingSavings: g.existingSavings || 0,
+      currentMonthlyContribution: g.currentMonthlyContribution || 0,
+      sipTiming: "end_of_period",
+    });
+
+    const inflationAdjustedCost = calc.inflationAdjustedCost;
+    const requiredMonthlySIP = calc.requiredMonthlySIP;
+    const status: FeasibilityStatus = calc.feasibilityStatus || (g.currentMonthlyContribution >= requiredMonthlySIP ? "ON_TRACK" : "STRETCH_REQUIRED");
 
     totalGoalCorpusNeeded += inflationAdjustedCost;
     totalRequiredMonthlySIP += requiredMonthlySIP;
@@ -52,7 +60,7 @@ export function generateStructuredReport({
 
   // Determine Allocation
   const rp = client.riskProfile;
-  const equityPercent = rp?.recommendedEquityPercent ?? 60;
+  const equityPercent = rp?.recommendedEquityPercent ?? 50;
   const debtPercent = rp?.recommendedDebtPercent ?? 35;
   const goldOrCashPercent = rp?.recommendedGoldCashPercent ?? 5;
 

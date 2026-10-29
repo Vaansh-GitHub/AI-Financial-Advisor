@@ -34,11 +34,11 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<"adviser" | "storage" | "ai">("adviser");
 
   // Adviser Form State
-  const [adviserName, setAdviserName] = useState(settings?.adviserName || "Priya Sharma, CFA");
-  const [riaNumber, setRiaNumber] = useState(settings?.riaNumber || "INA000019842");
-  const [firmName, setFirmName] = useState(settings?.firmName || "Artha Wealth Advisory LLP");
-  const [email, setEmail] = useState(settings?.email || "priya.sharma@arthawealth.in");
-  const [phone, setPhone] = useState(settings?.phone || "+91 98201 55440");
+  const [adviserName, setAdviserName] = useState(settings?.adviserName || "Adviser");
+  const [riaNumber, setRiaNumber] = useState(settings?.riaNumber || "INA000000000");
+  const [firmName, setFirmName] = useState(settings?.firmName || "Wealth Advisory Practice");
+  const [email, setEmail] = useState(settings?.email || "adviser@example.com");
+  const [phone, setPhone] = useState(settings?.phone || "");
   const [officeCity, setOfficeCity] = useState(settings?.officeCity || "Mumbai");
 
   // AI Form State

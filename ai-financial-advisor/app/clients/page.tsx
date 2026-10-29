@@ -24,7 +24,7 @@ import {
   List,
 } from "lucide-react";
 import { useStorageData } from "@/lib/storage/useStorage";
-import { deleteClient } from "@/lib/storage/localStorage";
+import { deleteClient, loadOfficialPS04Personas } from "@/lib/storage/localStorage";
 import { formatINR } from "@/lib/utils";
 import { StatusBadge, Badge } from "@/components/ui/Badge";
 import { DataUploadModal } from "@/components/clients/DataUploadModal";
@@ -113,10 +113,27 @@ export default function ClientsListPage() {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => {
+              const res = loadOfficialPS04Personas();
+              refreshAll();
+              if (res.count > 0) {
+                alert(`Loaded ${res.count} official PS 04 test personas into local storage!`);
+              } else {
+                alert("All 6 official PS 04 test personas are already loaded.");
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50/60 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 font-semibold text-xs text-teal-800 dark:text-teal-300 transition"
+            title="Load the 6 official sample test personas from Problem Statement 04"
+          >
+            <Users className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+            <span>Load PS 04 Personas</span>
+          </button>
+
+          <button
+            onClick={() => {
               setSelectedClientForUpload(undefined);
               setShowUploadModal(true);
             }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 font-semibold text-xs text-slate-700 transition"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold text-xs text-slate-700 dark:text-slate-300 transition"
           >
             <Upload className="w-3.5 h-3.5 text-slate-500" />
             <span>Upload Client Data</span>
@@ -133,7 +150,7 @@ export default function ClientsListPage() {
       </div>
 
       {/* SEARCH, FILTERS & CONTROLS BAR */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3">
         <div className="flex flex-col md:flex-row items-center gap-3">
           {/* Search Input */}
           <div className="relative flex-1 w-full">
@@ -143,7 +160,7 @@ export default function ClientsListPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, city, email, phone..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-slate-900"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
             />
           </div>
 
@@ -272,10 +289,10 @@ export default function ClientsListPage() {
 
       {/* CLIENTS CONTENT: TABLE VIEW */}
       {viewMode === "table" && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider text-[10px]">
+              <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
                 <tr>
                   <th className="py-3 px-4">Client Name</th>
                   <th className="py-3 px-3">City & Age</th>
@@ -286,7 +303,7 @@ export default function ClientsListPage() {
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filtered.length > 0 ? (
                   filtered.map((client) => {
                     const monthlyBurn = client.monthlyExpenses + client.monthlyEMI;
@@ -296,16 +313,16 @@ export default function ClientsListPage() {
                     const hasConflict = client.riskProfile?.hasConflict;
 
                     return (
-                      <tr key={client.id} className="hover:bg-slate-50/80 transition group">
+                      <tr key={client.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition group">
                         {/* Name & Contact */}
                         <td className="py-3.5 px-4">
                           <Link
                             href={`/clients/${client.id}`}
-                            className="font-bold text-slate-900 hover:text-teal-600 flex items-center gap-1.5"
+                            className="font-bold text-slate-900 dark:text-slate-100 hover:text-teal-600 dark:hover:text-teal-400 flex items-center gap-1.5"
                           >
                             <span>{client.fullName}</span>
                             {client.isDemoPersona && (
-                              <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-semibold border border-slate-200">
+                              <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.2 rounded font-semibold border border-slate-200 dark:border-slate-700">
                                 Persona
                               </span>
                             )}
@@ -354,7 +371,7 @@ export default function ClientsListPage() {
 
                         {/* Assets vs Debt */}
                         <td className="py-3.5 px-3">
-                          <p className="font-semibold text-slate-800">{formatINR(totalAssets)}</p>
+                          <p className="font-semibold text-slate-800 dark:text-slate-200">{formatINR(totalAssets)}</p>
                           <p className="text-[11px] text-slate-400">
                             Debt: {client.outstandingLiabilities > 0 ? formatINR(client.outstandingLiabilities) : "₹0"}
                           </p>
@@ -362,7 +379,7 @@ export default function ClientsListPage() {
 
                         {/* Risk Profile */}
                         <td className="py-3.5 px-3">
-                          <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 font-semibold text-[10px]">
+                          <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold text-[10px]">
                             {client.riskProfile?.combinedCategory || "BALANCED"}
                           </span>
                           <p className="text-[10px] text-slate-400 mt-0.5">
@@ -375,7 +392,7 @@ export default function ClientsListPage() {
                           <div className="flex items-center justify-end gap-1.5 opacity-90 group-hover:opacity-100">
                             <Link
                               href={`/assistant?clientId=${client.id}`}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-teal-600 hover:bg-slate-100 transition"
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                               title="Chat with AI about this client"
                             >
                               <Bot className="w-4 h-4" />
@@ -386,7 +403,7 @@ export default function ClientsListPage() {
                                 setSelectedClientForUpload(client.id);
                                 setShowUploadModal(true);
                               }}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-teal-600 hover:bg-slate-100 transition"
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                               title="Upload client financial statement / data"
                             >
                               <Upload className="w-4 h-4" />
@@ -394,7 +411,7 @@ export default function ClientsListPage() {
 
                             <Link
                               href={`/clients/${client.id}/edit`}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition"
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                               title="Edit Profile"
                             >
                               <Edit className="w-4 h-4" />
@@ -402,7 +419,7 @@ export default function ClientsListPage() {
 
                             <button
                               onClick={() => setClientToDelete({ id: client.id, name: client.fullName })}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
                               title="Delete Client"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -410,7 +427,7 @@ export default function ClientsListPage() {
 
                             <Link
                               href={`/clients/${client.id}`}
-                              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-700 font-bold text-[11px] transition ml-1"
+                              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-teal-900/40 hover:text-teal-700 dark:hover:text-teal-300 text-slate-700 dark:text-slate-300 font-bold text-[11px] transition ml-1"
                             >
                               Profile
                             </Link>

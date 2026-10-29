@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { ArrowLeft, Save, ShieldCheck, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Save, AlertCircle, CheckCircle2 } from "lucide-react";
 import { getClientById, updateClient } from "@/lib/storage/localStorage";
-import { EmploymentType, InvestmentExperience, RiskLevel, CapacityLevel } from "@/lib/storage/types";
+import { EmploymentType, InvestmentExperience, CapacityLevel } from "@/lib/storage/types";
 
 const editClientSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -50,53 +50,53 @@ export default function EditClientPage() {
   const router = useRouter();
   const clientId = params?.id as string;
   const [isSaved, setIsSaved] = useState(false);
-  const [client, setClient] = useState<any>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const initializedIdRef = React.useRef<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const client = useMemo(() => {
+    if (!mounted || !clientId) return null;
+    return getClientById(clientId);
+  }, [mounted, clientId]);
+
+  const defaultFormValues: EditFormData | undefined = useMemo(() => {
+    if (!client) return undefined;
+    return {
+      fullName: client.fullName,
+      email: client.email,
+      phone: client.phone || "",
+      age: client.age,
+      city: client.city,
+      employmentType: client.employmentType,
+      monthlyIncome: client.monthlyIncome,
+      monthlyExpenses: client.monthlyExpenses,
+      existingSavings: client.existingSavings,
+      emergencyFundAmount: client.emergencyFundAmount,
+      existingInvestments: client.existingInvestments,
+      outstandingLiabilities: client.outstandingLiabilities,
+      monthlyEMI: client.monthlyEMI,
+      numberOfDependants: client.numberOfDependants,
+      investmentExperience: client.investmentExperience,
+      riskTolerance: client.riskTolerance || (client.riskProfile?.toleranceLevel as any) || "MODERATE",
+      investmentHorizonYears: client.investmentHorizonYears,
+      financialNotes: client.financialNotes || "",
+    };
+  }, [client]);
 
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors, isSubmitting },
   } = useForm<EditFormData>({
     resolver: zodResolver(editClientSchema) as any,
+    values: defaultFormValues,
   });
 
-  useEffect(() => {
-    if (clientId && initializedIdRef.current !== clientId) {
-      initializedIdRef.current = clientId;
-      const data = getClientById(clientId);
-      setClient(data);
-      setIsLoaded(true);
-      if (data) {
-        reset({
-          fullName: data.fullName,
-          email: data.email,
-          phone: data.phone || "",
-          age: data.age,
-          city: data.city,
-          employmentType: data.employmentType,
-          monthlyIncome: data.monthlyIncome,
-          monthlyExpenses: data.monthlyExpenses,
-          existingSavings: data.existingSavings,
-          emergencyFundAmount: data.emergencyFundAmount,
-          existingInvestments: data.existingInvestments,
-          outstandingLiabilities: data.outstandingLiabilities,
-          monthlyEMI: data.monthlyEMI,
-          numberOfDependants: data.numberOfDependants,
-          investmentExperience: data.investmentExperience,
-          riskTolerance: data.riskTolerance || (data.riskProfile?.toleranceLevel as any) || "MODERATE",
-          investmentHorizonYears: data.investmentHorizonYears,
-          financialNotes: data.financialNotes || "",
-        });
-      }
-    }
-  }, [clientId, reset]);
-
-  if (!isLoaded) {
+  if (!mounted) {
     return (
-      <div className="py-20 text-center text-xs text-slate-500">
+      <div className="py-20 text-center text-xs text-slate-500 dark:text-slate-400">
         Loading client profile...
       </div>
     );
@@ -106,8 +106,8 @@ export default function EditClientPage() {
     return (
       <div className="py-20 text-center space-y-4">
         <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
-        <h2 className="text-base font-bold text-slate-800">Client Not Found</h2>
-        <Link href="/clients" className="text-xs text-teal-600 font-semibold hover:underline">
+        <h2 className="text-base font-bold text-slate-800 dark:text-slate-200">Client Not Found</h2>
+        <Link href="/clients" className="text-xs text-teal-600 dark:text-teal-400 font-semibold hover:underline">
           Return to Clients
         </Link>
       </div>
@@ -174,25 +174,25 @@ export default function EditClientPage() {
       <div className="flex items-center justify-between">
         <Link
           href={`/clients/${clientId}`}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Back to Profile</span>
         </Link>
-        <span className="text-xs font-semibold text-slate-400">Editing: {client.fullName}</span>
+        <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">Editing: {client.fullName}</span>
       </div>
 
-      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-6">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Edit Client Profile</h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Edit Client Profile</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Update personal demographics, income, commitments, and risk preferences.
           </p>
         </div>
 
         {isSaved && (
-          <div className="p-3 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>Profile successfully updated in local storage! Redirecting...</span>
           </div>
         )}
@@ -200,58 +200,58 @@ export default function EditClientPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 text-xs">
           {/* Section 1: Personal */}
           <div className="space-y-3">
-            <h3 className="font-bold text-sm text-slate-800 border-b border-slate-100 pb-2">
+            <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-2">
               1. Personal Demographics
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Full Legal Name</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Full Legal Name</label>
                 <input
                   {...register("fullName")}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 />
                 {errors.fullName && <p className="text-rose-500 text-[10px] mt-1">{errors.fullName.message}</p>}
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Email Address</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Email Address</label>
                 <input
                   {...register("email")}
                   type="email"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Phone Number</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Phone Number</label>
                 <input
                   {...register("phone")}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">City</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">City</label>
                 <input
                   {...register("city")}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Age</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Age</label>
                 <input
                   {...register("age")}
                   type="number"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Employment Type</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Employment Type</label>
                 <select
                   {...register("employmentType")}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 >
                   <option value="salaried_permanent">Salaried Permanent</option>
                   <option value="salaried_contract">Salaried Contract</option>
@@ -266,95 +266,95 @@ export default function EditClientPage() {
 
           {/* Section 2: Financial */}
           <div className="space-y-3">
-            <h3 className="font-bold text-sm text-slate-800 border-b border-slate-100 pb-2">
+            <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-2">
               2. Financial Position & Cashflow
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Monthly Income (₹)</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Monthly Income (₹)</label>
                 <input
                   {...register("monthlyIncome")}
                   type="number"
                   step={5000}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Monthly Expenses (₹)</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Monthly Expenses (₹)</label>
                 <input
                   {...register("monthlyExpenses")}
                   type="number"
                   step={2000}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Monthly EMI Obligations (₹)</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Monthly EMI Obligations (₹)</label>
                 <input
                   {...register("monthlyEMI")}
                   type="number"
                   step={1000}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Emergency Fund Reserves (₹)</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Emergency Fund Reserves (₹)</label>
                 <input
                   {...register("emergencyFundAmount")}
                   type="number"
                   step={10000}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Bank Savings / FDs (₹)</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Bank Savings / FDs (₹)</label>
                 <input
                   {...register("existingSavings")}
                   type="number"
                   step={25000}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Investments (Mutual Funds / Stocks) (₹)</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Investments (Mutual Funds / Stocks) (₹)</label>
                 <input
                   {...register("existingInvestments")}
                   type="number"
                   step={50000}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Outstanding Loans / Debt (₹)</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Outstanding Loans / Debt (₹)</label>
                 <input
                   {...register("outstandingLiabilities")}
                   type="number"
                   step={50000}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Number of Dependants</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Number of Dependants</label>
                 <input
                   {...register("numberOfDependants")}
                   type="number"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Investment Horizon (Years)</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Investment Horizon (Years)</label>
                 <input
                   {...register("investmentHorizonYears")}
                   type="number"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 />
               </div>
             </div>
@@ -362,15 +362,15 @@ export default function EditClientPage() {
 
           {/* Section 3: Risk Profile & Notes */}
           <div className="space-y-3">
-            <h3 className="font-bold text-sm text-slate-800 border-b border-slate-100 pb-2">
+            <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-2">
               3. Investment Profile & Advising Notes
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Investment Experience</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Investment Experience</label>
                 <select
                   {...register("investmentExperience")}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 >
                   <option value="none_or_beginner">Beginner (FDs only)</option>
                   <option value="basic_mutual_funds">Basic Mutual Funds / SIPs</option>
@@ -380,10 +380,10 @@ export default function EditClientPage() {
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Risk Tolerance</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Risk Tolerance</label>
                 <select
                   {...register("riskTolerance")}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 >
                   <option value="CONSERVATIVE">Conservative</option>
                   <option value="MODERATE">Moderate</option>
@@ -392,20 +392,20 @@ export default function EditClientPage() {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block font-semibold text-slate-700 mb-1">Adviser Notes</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Adviser Notes</label>
                 <textarea
                   {...register("financialNotes")}
                   rows={2}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
                 />
               </div>
             </div>
           </div>
 
-          <div className="pt-4 flex items-center justify-between border-t border-slate-100">
+          <div className="pt-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
             <Link
               href={`/clients/${clientId}`}
-              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs hover:bg-slate-50"
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-800"
             >
               Cancel
             </Link>

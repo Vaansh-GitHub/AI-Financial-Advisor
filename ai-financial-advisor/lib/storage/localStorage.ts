@@ -17,18 +17,19 @@ import {
   INITIAL_DEMO_REPORTS,
   INITIAL_DEMO_RESEARCH,
   INITIAL_DEMO_ACTIVITY,
+  OFFICIAL_PS04_TEST_PERSONAS,
 } from "./seedData";
 
 const STORAGE_KEYS = {
-  CLIENTS: "zeckathon_clients_v2",
-  GOALS: "zeckathon_goals_v2",
-  CHATS: "zeckathon_chats_v2",
-  REPORTS: "zeckathon_reports_v2",
-  RESEARCH: "zeckathon_research_v2",
-  ACTIVITY: "zeckathon_activity_v2",
-  FILES: "zeckathon_files_v2",
-  SETTINGS: "zeckathon_settings_v2",
-  INITIALIZED: "zeckathon_initialized_v2",
+  CLIENTS: "zeckathon_clients_v3",
+  GOALS: "zeckathon_goals_v3",
+  CHATS: "zeckathon_chats_v3",
+  REPORTS: "zeckathon_reports_v3",
+  RESEARCH: "zeckathon_research_v3",
+  ACTIVITY: "zeckathon_activity_v3",
+  FILES: "zeckathon_files_v3",
+  SETTINGS: "zeckathon_settings_v3",
+  INITIALIZED: "zeckathon_initialized_v3",
 };
 
 export const STORAGE_CHANGE_EVENT = "zeckathon_storage_changed";
@@ -72,8 +73,8 @@ function setItem<T>(key: string, value: T): void {
 export function initializeLocalStorage(forceReset = false): void {
   if (!isBrowser()) return;
 
-  // Clean out legacy v1 seeded demo keys if present in browser
-  const OLD_V1_KEYS = [
+  // Clean out legacy v1 and v2 seeded demo keys if present in browser
+  const LEGACY_KEYS = [
     "zeckathon_clients_v1",
     "zeckathon_goals_v1",
     "zeckathon_chats_v1",
@@ -83,8 +84,17 @@ export function initializeLocalStorage(forceReset = false): void {
     "zeckathon_files_v1",
     "zeckathon_settings_v1",
     "zeckathon_initialized_v1",
+    "zeckathon_clients_v2",
+    "zeckathon_goals_v2",
+    "zeckathon_chats_v2",
+    "zeckathon_reports_v2",
+    "zeckathon_research_v2",
+    "zeckathon_activity_v2",
+    "zeckathon_files_v2",
+    "zeckathon_settings_v2",
+    "zeckathon_initialized_v2",
   ];
-  OLD_V1_KEYS.forEach((k) => {
+  LEGACY_KEYS.forEach((k) => {
     try {
       localStorage.removeItem(k);
     } catch {}
@@ -341,6 +351,16 @@ export function deleteConversation(id: string): boolean {
   const filtered = chats.filter((c) => c.id !== id);
   if (filtered.length === chats.length) return false;
   setItem(STORAGE_KEYS.CHATS, filtered);
+  return true;
+}
+
+export function updateConversationTitle(id: string, title: string): boolean {
+  const chats = getConversations();
+  const index = chats.findIndex((c) => c.id === id);
+  if (index === -1) return false;
+  chats[index].title = title.trim();
+  chats[index].updatedAt = new Date().toISOString();
+  setItem(STORAGE_KEYS.CHATS, chats);
   return true;
 }
 
@@ -662,5 +682,16 @@ export function clearAllData(): void {
   if (!isBrowser()) return;
   Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
   initializeLocalStorage(true);
+}
+
+export function loadOfficialPS04Personas(): { count: number } {
+  if (!isBrowser()) return { count: 0 };
+  const existing = getItem<Client[]>(STORAGE_KEYS.CLIENTS, []);
+  const existingIds = new Set(existing.map((c) => c.id));
+  const toAdd = OFFICIAL_PS04_TEST_PERSONAS.filter((p) => !existingIds.has(p.id));
+  const merged = [...existing, ...toAdd];
+  setItem(STORAGE_KEYS.CLIENTS, merged);
+  notifyChange(STORAGE_KEYS.CLIENTS);
+  return { count: toAdd.length };
 }
 

@@ -10,6 +10,7 @@ import {
   FileText,
   BookOpen,
   Settings,
+  Layers,
   Search,
   Plus,
   Upload,
@@ -97,6 +98,7 @@ export function AppShell({
     { label: "Overview", href: "/", icon: LayoutDashboard },
     { label: "Clients", href: "/clients", icon: Users, badge: clients.length ? `${clients.length}` : undefined },
     { label: "AI Assistant", href: "/assistant", icon: Bot, badge: "Co-pilot", badgeColor: "bg-teal-500" },
+    { label: "Mutual Funds", href: "/funds", icon: Layers, badge: "Live AMFI", badgeColor: "bg-teal-600" },
     { label: "Financial Reports", href: "/reports", icon: FileText },
     { label: "Research Library", href: "/research", icon: BookOpen },
     { label: "Settings", href: "/settings", icon: Settings },
@@ -419,11 +421,12 @@ export function AppShell({
                       .map((n) => n[0])
                       .join("")
                       .substring(0, 2)
-                  : "PS"}
+                      .toUpperCase()
+                  : "AD"}
               </div>
               <div className="text-left hidden xl:block">
                 <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 leading-none">
-                  {settings?.adviserName || "Priya Sharma, CFA"}
+                  {settings?.adviserName || "Adviser"}
                 </p>
                 <p className="text-[10px] text-teal-600 font-medium leading-tight">
                   SEBI RIA Licensed

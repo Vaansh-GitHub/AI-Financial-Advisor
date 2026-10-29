@@ -140,8 +140,24 @@ export interface ChatMessage {
     intent?: string;
     metrics?: Record<string, any>;
     recommendations?: string[];
+    citations?: Array<{
+      chunkId?: string;
+      docTitle: string;
+      pageNumber: number;
+      snippet: string;
+      sourceType?: string;
+      sourceCategory?: string;
+      sourceUrl?: string;
+      publicationDate?: string;
+      schemeCode?: string;
+      cosineScore?: number;
+      isValidated?: boolean;
+    }>;
+    retrievalDebug?: any;
+    modelUsed?: string;
     isPlaceholder?: boolean;
     disclosureNote?: string;
+    calculationDetails?: Record<string, any>;
   };
 }
 

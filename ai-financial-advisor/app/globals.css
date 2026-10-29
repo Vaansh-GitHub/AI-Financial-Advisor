@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
     --navy-950: #070e18;
@@ -30,6 +32,12 @@
     color: #0f172a;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
+  }
+
+  .dark body,
+  html.dark body {
+    background-color: #070e18 !important;
+    color: #f8fafc !important;
   }
 }
 

@@ -94,13 +94,20 @@ export function calculateFutureValueOfSavings(
 
 /**
  * Calculate required monthly SIP to reach target shortfall.
- * Default is beginning-of-period (Annuity Due / Advance SIP), standard in Indian mutual fund SIPs.
+ * Standard end-of-month ordinary annuity formula (default):
+ *   SIP = FV * r / ((1 + r)^N - 1)
+ * Where:
+ *   - r = nominal monthly rate (annualReturn / 12)
+ *   - N = total number of contributions (horizonYears * 12)
+ *
+ * For r = 0 (zero return), straight-line division: SIP = FV / N
+ * For N = 0 (zero horizon), immediate requirement: SIP = FV
  */
 export function calculateRequiredMonthlySIP(
   targetShortfall: number,
   annualReturn: number,
   horizonYears: number,
-  sipTiming: "beginning_of_period" | "end_of_period" = "beginning_of_period"
+  sipTiming: "beginning_of_period" | "end_of_period" = "end_of_period"
 ): number {
   if (targetShortfall <= 0) return 0;
   if (horizonYears <= 0) return Math.round(targetShortfall);
@@ -108,25 +115,26 @@ export function calculateRequiredMonthlySIP(
   const totalMonths = Math.round(horizonYears * 12);
   if (totalMonths <= 0) return Math.round(targetShortfall);
 
-  // If return is zero, straight line division
+  // If return is zero, straight line division: SIP = Shortfall / N
   if (annualReturn === 0) {
     return Math.round(targetShortfall / totalMonths);
   }
 
-  // Monthly interest rate
+  // Nominal monthly return rate (annual rate divided by 12)
   const monthlyRate = annualReturn / 12;
 
-  if (sipTiming === "beginning_of_period") {
-    // FV = P * (( (1 + r)^n - 1 ) / r) * (1 + r)
-    // => P = FV * r / ( ((1 + r)^n - 1) * (1 + r) )
+  if (sipTiming === "end_of_period") {
+    // Ordinary annuity (end-of-month): FV = SIP * (( (1 + r)^N - 1 ) / r)
+    // => SIP = FV * r / ((1 + r)^N - 1)
     const compoundFactor = Math.pow(1 + monthlyRate, totalMonths);
-    const denominator = (compoundFactor - 1) * (1 + monthlyRate);
+    const denominator = compoundFactor - 1;
     const sip = (targetShortfall * monthlyRate) / denominator;
     return Math.max(0, Math.round(sip));
   } else {
-    // Ordinary annuity (end of month)
+    // Annuity Due (beginning-of-month): FV = SIP * (( (1 + r)^N - 1 ) / r) * (1 + r)
+    // => SIP = FV * r / ( ((1 + r)^N - 1) * (1 + r) )
     const compoundFactor = Math.pow(1 + monthlyRate, totalMonths);
-    const denominator = compoundFactor - 1;
+    const denominator = (compoundFactor - 1) * (1 + monthlyRate);
     const sip = (targetShortfall * monthlyRate) / denominator;
     return Math.max(0, Math.round(sip));
   }
@@ -143,7 +151,7 @@ export function calculateGoalPlan(inputs: GoalCalculationInputs): GoalCalculatio
     expectedAnnualReturn,
     existingSavings,
     currentMonthlyContribution,
-    sipTiming = "beginning_of_period",
+    sipTiming = "end_of_period",
   } = inputs;
 
   const inflationAdjustedCost = calculateInflationAdjustedCost(

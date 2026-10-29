@@ -41,6 +41,7 @@ import {
   deleteClient,
   saveGoal,
 } from "@/lib/storage/localStorage";
+import { calculateGoalPlan } from "@/lib/finance/calculations";
 import { formatINR } from "@/lib/utils";
 import { StatusBadge, Badge } from "@/components/ui/Badge";
 import { StatCard } from "@/components/ui/StatCard";
@@ -117,11 +118,38 @@ export default function ClientProfilePage() {
   const netWorth = totalAssets - client.outstandingLiabilities;
   const hasConflict = client.riskProfile?.hasConflict;
 
-  // Asset Allocation Pie Data
-  const allocData = [
-    { name: "Equity", value: client.existingPortfolioAllocation?.equityPercent ?? 60, fill: "#0D9488" },
-    { name: "Debt / Fixed Income", value: client.existingPortfolioAllocation?.debtPercent ?? 30, fill: "#0284C7" },
-    { name: "Gold / Cash", value: client.existingPortfolioAllocation?.goldOrCashPercent ?? 10, fill: "#F59E0B" },
+  // Dynamic Asset Allocation calculation from actual client assets:
+  // Equity: existingInvestments, Debt / Fixed Income: existingSavings, Cash: emergencyFundAmount
+  const equityAsset = client.existingInvestments || 0;
+  const debtAsset = client.existingSavings || 0;
+  const cashAsset = client.emergencyFundAmount || 0;
+  const totalRecordedAssets = equityAsset + debtAsset + cashAsset;
+
+  const hasRecordedAssets = totalRecordedAssets > 0 || (
+    client.existingPortfolioAllocation &&
+    ((client.existingPortfolioAllocation.equityPercent || 0) > 0 ||
+     (client.existingPortfolioAllocation.debtPercent || 0) > 0 ||
+     (client.existingPortfolioAllocation.goldOrCashPercent || 0) > 0)
+  );
+
+  const equityPercent = totalRecordedAssets > 0
+    ? Math.round((equityAsset / totalRecordedAssets) * 100)
+    : (client.existingPortfolioAllocation?.equityPercent ?? 0);
+
+  const debtPercent = totalRecordedAssets > 0
+    ? Math.round((debtAsset / totalRecordedAssets) * 100)
+    : (client.existingPortfolioAllocation?.debtPercent ?? 0);
+
+  const cashPercent = totalRecordedAssets > 0
+    ? Math.max(0, 100 - equityPercent - debtPercent)
+    : (client.existingPortfolioAllocation?.goldOrCashPercent ?? 0);
+
+  const allocData = hasRecordedAssets ? [
+    { name: "Equity", value: equityPercent, fill: "#0D9488" },
+    { name: "Debt / Fixed Income", value: debtPercent, fill: "#0284C7" },
+    { name: "Gold / Cash", value: cashPercent, fill: "#F59E0B" },
+  ] : [
+    { name: "Unallocated", value: 100, fill: "#64748B" }
   ];
 
   const handleCreateGoal = (e: React.FormEvent) => {
@@ -129,15 +157,24 @@ export default function ClientProfilePage() {
     if (!newGoalTitle.trim()) return;
 
     const inflationRate = newGoalInflation / 100;
-    const fvCost = Math.round(newGoalCurrentCost * Math.pow(1 + inflationRate, newGoalHorizon));
-    const requiredSIP = Math.round((fvCost * 0.007) / Math.max(1, newGoalHorizon));
+    
+    // Deterministic ordinary annuity calculation: SIP = FV * [r / ((1+r)^N - 1)]
+    const plan = calculateGoalPlan({
+      currentCost: newGoalCurrentCost,
+      targetHorizonYears: newGoalHorizon,
+      expectedInflationRate: inflationRate,
+      expectedAnnualReturn: 0.12,
+      existingSavings: newGoalExistingSavings,
+      currentMonthlyContribution: newGoalMonthlyContrib,
+      sipTiming: "end_of_period",
+    });
 
     saveGoal({
       clientId: client.id,
       title: newGoalTitle,
       category: newGoalCategory,
       currentCost: newGoalCurrentCost,
-      targetAmount: fvCost,
+      targetAmount: plan.inflationAdjustedCost,
       targetHorizonYears: newGoalHorizon,
       expectedInflationRate: inflationRate,
       expectedAnnualReturn: 0.12,
@@ -145,12 +182,7 @@ export default function ClientProfilePage() {
       currentMonthlyContribution: newGoalMonthlyContrib,
       priority: newGoalPriority,
       calculationResults: {
-        inflationAdjustedCost: fvCost,
-        futureValueOfExistingSavings: Math.round(newGoalExistingSavings * Math.pow(1.12, newGoalHorizon)),
-        corpusShortfall: Math.max(0, fvCost - Math.round(newGoalExistingSavings * Math.pow(1.12, newGoalHorizon))),
-        requiredMonthlySIP: requiredSIP,
-        monthlySurplusOrShortfall: newGoalMonthlyContrib - requiredSIP,
-        feasibilityStatus: newGoalMonthlyContrib >= requiredSIP ? "ON_TRACK" : "STRETCH_REQUIRED",
+        ...plan,
         calculatedAt: new Date().toISOString(),
       },
     });
@@ -433,47 +465,65 @@ export default function ClientProfilePage() {
             </div>
 
             {/* Right 1 Col: Asset Allocation Donut */}
-            <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between">
               <div>
-                <h3 className="font-bold text-sm text-slate-900 mb-1">Portfolio Allocation</h3>
-                <p className="text-xs text-slate-500 mb-4">Current asset class exposure</p>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 mb-1">Portfolio Allocation</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                  {hasRecordedAssets ? "Current asset class exposure" : "Awaiting balance sheet data"}
+                </p>
 
-                <div className="h-48 w-full flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={allocData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={45}
-                        outerRadius={70}
-                        paddingAngle={4}
-                        dataKey="value"
-                      >
-                        {allocData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <Tooltip contentStyle={{ borderRadius: "10px", fontSize: "11px" }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="space-y-1.5 pt-2 text-xs">
-                  {allocData.map((a) => (
-                    <div key={a.name} className="flex items-center justify-between text-slate-600">
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: a.fill }} />
-                        {a.name}
-                      </span>
-                      <strong className="text-slate-900">{a.value}%</strong>
+                {hasRecordedAssets ? (
+                  <>
+                    <div className="h-48 w-full flex items-center justify-center">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={allocData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={45}
+                            outerRadius={70}
+                            paddingAngle={4}
+                            dataKey="value"
+                          >
+                            {allocData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                          </Pie>
+                          <Tooltip contentStyle={{ borderRadius: "10px", fontSize: "11px" }} />
+                        </PieChart>
+                      </ResponsiveContainer>
                     </div>
-                  ))}
-                </div>
+
+                    <div className="space-y-1.5 pt-2 text-xs">
+                      {allocData.map((a) => (
+                        <div key={a.name} className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: a.fill }} />
+                            {a.name}
+                          </span>
+                          <strong className="text-slate-900 dark:text-slate-100">{a.value}%</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-8 text-center space-y-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-dashed border-slate-200 dark:border-slate-700">
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">0% Allocated</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                      No recorded portfolio holdings. Add savings/investments or upload a statement to calculate current allocation.
+                    </p>
+                    <div className="grid grid-cols-3 gap-1 pt-2 text-[10px] text-slate-400">
+                      <div>Equity: <strong>0%</strong></div>
+                      <div>Debt: <strong>0%</strong></div>
+                      <div>Cash: <strong>0%</strong></div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-400">
-                Recommended target: {client.riskProfile?.recommendedEquityPercent ?? 60}% Equity
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500">
+                Recommended target: {client.riskProfile?.recommendedEquityPercent ?? 50}% Equity
               </div>
             </div>
           </div>
@@ -499,9 +549,16 @@ export default function ClientProfilePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {clientGoals.map((goal) => {
-              const calc = goal.calculationResults;
-              const fv = calc?.inflationAdjustedCost ?? goal.currentCost;
-              const reqSIP = calc?.requiredMonthlySIP ?? 0;
+              const calc = goal.calculationResults || calculateGoalPlan({
+                currentCost: goal.currentCost,
+                targetHorizonYears: goal.targetHorizonYears,
+                expectedInflationRate: goal.expectedInflationRate || 0.06,
+                expectedAnnualReturn: goal.expectedAnnualReturn || 0.12,
+                existingSavings: goal.existingSavings || 0,
+                currentMonthlyContribution: goal.currentMonthlyContribution || 0,
+              });
+              const fv = calc.inflationAdjustedCost;
+              const reqSIP = calc.requiredMonthlySIP;
               const currSIP = goal.currentMonthlyContribution;
 
               return (

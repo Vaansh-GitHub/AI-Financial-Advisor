@@ -1,6 +1,7 @@
 import { Client, Goal, UploadedFileMeta } from "../storage/types";
 import { saveUploadedFileMeta } from "../storage/localStorage";
 import { storeFileInIndexedDB } from "../storage/indexedDb";
+import { indexUploadedDocument } from "./ragService";
 
 export interface ParsedFinancialData {
   clientUpdates?: Partial<Client>;
@@ -11,13 +12,79 @@ export interface ParsedFinancialData {
 }
 
 /**
+ * Extracts readable text streams and page markers from uploaded PDF files
+ */
+async function extractTextFromPDFFile(
+  file: File
+): Promise<{
+  text: string;
+  pages: Array<{ pageNumber: number; text: string }>;
+  status: "SUCCESS" | "FAILED_EXTRACTION";
+  reason?: string;
+}> {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    const latin1 = new TextDecoder("latin1").decode(bytes);
+
+    // Look for text operators between BT and ET across PDF page objects
+    const pageMatches = latin1.split(/\/Type\s*\/Page[^s]/i);
+    const pages: Array<{ pageNumber: number; text: string }> = [];
+
+    if (pageMatches.length > 1) {
+      pageMatches.slice(1).forEach((pageContent, idx) => {
+        const textParts: string[] = [];
+        const textRegex = /\(([^)]+)\)\s*Tj/g;
+        let m;
+        while ((m = textRegex.exec(pageContent)) !== null) {
+          textParts.push(m[1]);
+        }
+        const tjRegex = /\[([^\]]+)\]\s*TJ/g;
+        while ((m = tjRegex.exec(pageContent)) !== null) {
+          const innerMatches = m[1].match(/\(([^)]+)\)/g);
+          if (innerMatches) {
+            textParts.push(innerMatches.map((s) => s.slice(1, -1)).join(""));
+          }
+        }
+        const extracted = textParts.join(" ").replace(/\\([()\\])/g, "$1").trim();
+        if (extracted) {
+          pages.push({ pageNumber: idx + 1, text: extracted });
+        }
+      });
+    }
+
+    if (pages.length === 0) {
+      return {
+        text: "",
+        pages: [],
+        status: "FAILED_EXTRACTION",
+        reason: "No readable text stream found in PDF (scanned image, encrypted, or compressed raster format).",
+      };
+    }
+
+    const fullText = pages.map((p) => `[Page ${p.pageNumber}] ${p.text}`).join("\n\n");
+    return {
+      text: fullText,
+      pages,
+      status: "SUCCESS",
+    };
+  } catch (e: any) {
+    return {
+      text: "",
+      pages: [],
+      status: "FAILED_EXTRACTION",
+      reason: `PDF parsing error: ${e?.message || "Unknown read error"}`,
+    };
+  }
+}
+
+/**
  * Universal Financial Data Parser
  * Supports:
  * 1. JSON profile / data records
  * 2. CSV bank / statement / holding exports
- * 3. PDF statement / factsheet uploads (stores in IndexedDB, indexes metadata)
+ * 3. PDF statement / factsheet uploads (stores in IndexedDB, indexes metadata, extracts RAG passages)
  */
-
 export async function parseUploadedFile(
   file: File,
   clientId?: string,
@@ -36,22 +103,34 @@ export async function parseUploadedFile(
   if (fileExt === "json" || file.type.includes("json")) {
     const text = await file.text();
     parsed = parseJSONContent(text);
+    indexUploadedDocument(fileId, file.name, text, clientId);
   }
   // 2. CSV File Processing
   else if (fileExt === "csv" || file.type.includes("csv")) {
     const text = await file.text();
     parsed = parseCSVContent(text);
+    indexUploadedDocument(fileId, file.name, text, clientId);
   }
   // 3. PDF File Processing
   else if (fileExt === "pdf" || file.type.includes("pdf")) {
     // Store binary in IndexedDB
     await storeFileInIndexedDB(fileId, file.name, file.type, file);
+    const pdfData = await extractTextFromPDFFile(file);
 
-    parsed = {
-      summaryText: `Uploaded PDF document "${file.name}" (${Math.round(file.size / 1024)} KB). Stored safely in local IndexedDB. Ready for document review.`,
-      recordsCount: 1,
-      fieldsDetected: ["Document Name", "File Size", "PDF Blob Storage"],
-    };
+    if (pdfData.status === "FAILED_EXTRACTION") {
+      parsed = {
+        summaryText: `Uploaded PDF "${file.name}" stored in IndexedDB. Text extraction unviable: ${pdfData.reason}`,
+        recordsCount: 0,
+        fieldsDetected: ["Binary Stored in IndexedDB"],
+      };
+    } else {
+      parsed = {
+        summaryText: `Uploaded PDF "${file.name}" (${Math.round(file.size / 1024)} KB, ${pdfData.pages.length} pages verified). Ready for RAG grounding citations.`,
+        recordsCount: pdfData.pages.length,
+        fieldsDetected: ["Document Name", "Page Snippets", "RAG Passages", "PDF Storage"],
+      };
+      indexUploadedDocument(fileId, file.name, pdfData.text, clientId, pdfData.pages);
+    }
   } else {
     // Generic text/data fallback
     const text = await file.text();
@@ -60,6 +139,7 @@ export async function parseUploadedFile(
       recordsCount: 1,
       fieldsDetected: ["Raw Text"],
     };
+    indexUploadedDocument(fileId, file.name, text, clientId);
   }
 
   // Save metadata to LocalStorage
